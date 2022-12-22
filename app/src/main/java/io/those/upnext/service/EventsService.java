@@ -12,6 +12,7 @@ import android.widget.RemoteViewsService;
 import androidx.annotation.NonNull;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import io.those.upnext.model.UpNextListElement;
 import io.those.upnext.remoteviews.ListViewElementCreator;
 import io.those.upnext.repository.InstanceRepository;
 import io.those.upnext.util.PermissionUtil;
+import io.those.upnext.util.TimeUtil;
 
 public class EventsService extends RemoteViewsService {
     public static final String EXTRA_START = "start";
@@ -154,6 +156,7 @@ public class EventsService extends RemoteViewsService {
             }
 
             try {
+                LocalDateTime nowDateTime = LocalDateTime.now();
                 long numberOfDaysBetween = ChronoUnit.DAYS.between(start, end) + 1;
                 List<LocalDate> days = IntStream.iterate(0, i -> i + 1)
                         .limit(numberOfDaysBetween)
@@ -169,7 +172,12 @@ public class EventsService extends RemoteViewsService {
                         elements.add(new UpNextDayLabel(day));
                     }
 
-                    elements.addAll(eventsForThatDay);
+                    eventsForThatDay.forEach(event -> {
+                        LocalDateTime endDateTime = TimeUtil.toDateTime(event.endMillis, TimeUtil.UTC).orElse(nowDateTime);
+                        if (endDateTime.isAfter(nowDateTime)) {
+                            elements.add(event);
+                        }
+                    });
                 });
             } catch (Exception e) {
                 Log.e(EventsService.class.getSimpleName(), "populateElements failed.", e);
